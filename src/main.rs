@@ -29,7 +29,7 @@ fn main() {
         match stream {
 
             Ok(mut stream) => {
-                thread::spawn( || {
+                thread::spawn(move || {
                     println!("New connection from {:?}", stream.peer_addr());
 
                     let mut buffer = [0; 1024];
