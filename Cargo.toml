@@ -1,0 +1,7 @@
+[package]
+name = "mutlithreaded-server"
+version = "0.1.0"
+edition = "2024"
+description = "A small Rust HTTP server built with the standard library"
+
+[dependencies]
