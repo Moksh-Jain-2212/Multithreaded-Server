@@ -1,3 +1,5 @@
+use std::thread;
+use std::time::Duration;
 use std::net::TcpListener;
 use std::io::{Read, Write};
 use std::fs;
@@ -23,57 +25,66 @@ fn main() {
 
     // For multiple request
     for stream in listener.incoming() {
+
         match stream {
+
             Ok(mut stream) => {
+                thread::spawn( || {
+                    println!("New connection from {:?}", stream.peer_addr());
 
-                println!("New connection from {:?}", stream.peer_addr());
+                    let mut buffer = [0; 1024];
 
-                let mut buffer = [0; 1024];
+                    let bytes_read = stream
+                        .read(&mut buffer)
+                        .expect("Failed to read request");
 
-                let bytes_read = stream
-                    .read(&mut buffer)
-                    .expect("Failed to read request");
+                    let request =
+                        String::from_utf8_lossy(&buffer[..bytes_read]);
 
-                let request =
-                    String::from_utf8_lossy(&buffer[..bytes_read]);
+                    println!("Request:\n{}", request);
 
-                println!("Request:\n{}", request);
+                    let first_line = request.lines().next().unwrap_or("");
 
-                let first_line = request.lines().next().unwrap_or("");
+                    let (status_line, filename) = match first_line {
+                        "GET / HTTP/1.1" => {
+                            ("HTTP/1.1 200 OK", "public/index.html")
+                        }
 
-                let (status_line, filename) = match first_line {
-                    "GET / HTTP/1.1" => {
-                        ("HTTP/1.1 200 OK", "public/index.html")
-                    }
+                        "GET /hello HTTP/1.1" => {
+                            thread::sleep(Duration::from_secs(10));
+                            ("HTTP/1.1 200 OK", "public/hello.html")
+                        }
 
-                    "GET /hello HTTP/1.1" => {
-                        ("HTTP/1.1 200 OK", "public/hello.html")
-                    }
+                        "GET /about HTTP/1.1" => {
+                            ("HTTP/1.1 200 OK", "public/about.html")
+                        }
 
-                    "GET /about HTTP/1.1" => {
-                        ("HTTP/1.1 200 OK", "public/about.html")
-                    }
+                        "GET /sleep HTTP/1.1" => {
+                            thread::sleep(Duration::from_secs(10));
+                            ("HTTP/1.1 200 OK", "public/sleep.html")
+                        }
 
-                    _ => {
-                        ("HTTP/1.1 404 Not Found", "public/404.html")
-                    }
-                };
+                        _ => {
+                            ("HTTP/1.1 404 Not Found", "public/404.html")
+                        }
+                    };
 
-                let body = fs::read_to_string(filename)
-                        .expect("Failed to read HTML file");
+                    let body = fs::read_to_string(filename)
+                            .expect("Failed to read HTML file");
 
 
-                // Proper HTTP response
-                let response = format!(
-                    "{}\r\nContent-Length: {}\r\nContent-Type: text/html\r\n\r\n{}",
-                    status_line,
-                    body.len(),
-                    body
-                );
+                    // Proper HTTP response
+                    let response = format!(
+                        "{}\r\nContent-Length: {}\r\nContent-Type: text/html\r\n\r\n{}",
+                        status_line,
+                        body.len(),
+                        body
+                    );
 
-                stream
-                    .write_all(response.as_bytes())
-                    .expect("Failed to write response");
+                    stream
+                        .write_all(response.as_bytes())
+                        .expect("Failed to write response");
+                });
             }
 
             Err(error) => {
