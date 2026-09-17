@@ -40,7 +40,7 @@ fn main() {
     // }
 
     // For multiple request
-    for stream in listener.incoming() {
+    for stream in listener.incoming().take(2) {
         match stream {
             Ok(mut stream) => {
                 let stats = Arc::clone(&stats);
